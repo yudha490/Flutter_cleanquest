@@ -1,3 +1,4 @@
+// Tubees_PPB/lib/screens/edit_profile.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/user.dart';
@@ -6,10 +7,9 @@ import '../services/api_service.dart'; // Pastikan path ini benar
 import 'package:shared_preferences/shared_preferences.dart';
 
 class EditProfileScreen extends StatefulWidget {
-  // userId bisa diberikan, atau akan diambil dari SharedPreferences
-  final int? userId; // Kini nullable, karena mungkin tidak diberikan dari luar
+  final int? userId;
 
-  const EditProfileScreen({Key? key, this.userId}) : super(key: key); // Ubah menjadi this.userId
+  const EditProfileScreen({Key? key, this.userId}) : super(key: key);
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -19,35 +19,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   User? user;
   late ApiService apiService;
   bool isLoading = true;
-  int? _currentUserId; // Untuk menyimpan ID user yang sebenarnya akan diedit
+  int? _currentUserId;
 
   DateTime? _selectedBirthDate;
 
   static const Color _primaryGreen = Color.fromRGBO(85, 132, 122, 0.97);
 
-  // Controllers for text fields
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
-  late TextEditingController _birthDateController; // Untuk tampilan tanggal lahir
+  late TextEditingController _birthDateController;
 
   @override
   void initState() {
     super.initState();
     apiService = ApiService();
-    _initializeUserData(); // Panggil fungsi inisialisasi data user
+    _initializeUserData();
   }
 
-  // Fungsi untuk menginisialisasi data user (ambil ID & fetch data)
   Future<void> _initializeUserData() async {
-    // Jika userId diberikan melalui constructor, gunakan itu
     if (widget.userId != null) {
       _currentUserId = widget.userId;
     } else {
-      // Jika tidak, coba ambil dari SharedPreferences
       final prefs = await SharedPreferences.getInstance();
-      _currentUserId = prefs.getInt('currentUserId'); // Pastikan kamu menyimpan ini saat login
-      String? token = prefs.getString('authToken'); // Untuk debugging
+      _currentUserId = prefs.getInt('currentUserId');
+      String? token = prefs.getString('authToken');
       if (token != null) {
         print('Stored Auth Token: $token');
       } else {
@@ -57,33 +53,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     print('DEBUG_EDIT_PROFILE: _currentUserId in _initializeUserData: $_currentUserId');
 
+    if (!mounted) return;
+
     if (_currentUserId != null) {
       fetchData(_currentUserId!);
     } else {
-      // Handle case where no userId is available (e.g., not logged in)
       setState(() {
         isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ID pengguna tidak ditemukan. Harap login kembali.')),
-      );
-      // Mungkin arahkan ke halaman login
-      // Navigator.pushReplacementNamed(context, '/login');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ID pengguna tidak ditemukan. Harap login kembali.')),
+        );
+      }
     }
   }
 
-  // Fungsi untuk mengambil data user dari API (memerlukan userId)
   Future<void> fetchData(int userIdToFetch) async {
     setState(() {
       isLoading = true;
     });
     try {
       final fetchedUser = await apiService.getUserData(userIdToFetch);
+      if (!mounted) return;
       setState(() {
         user = fetchedUser;
         _selectedBirthDate = user!.birthDate;
 
-        // Inisialisasi controllers dengan data user
         _nameController = TextEditingController(text: user!.username);
         _emailController = TextEditingController(text: user!.email);
         _phoneController = TextEditingController(text: user!.phoneNumber);
@@ -96,14 +92,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       });
     } catch (e) {
       print('Error fetching data: $e');
+      if (!mounted) return;
       setState(() {
         isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat data: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat data: $e')));
+      }
     }
   }
 
-  // Fungsi untuk menampilkan DatePicker dan memilih tanggal
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -125,45 +123,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       },
     );
     if (picked != null && picked != _selectedBirthDate) {
+      if (!mounted) return;
       setState(() {
         _selectedBirthDate = picked;
-        _birthDateController.text = DateFormat('yyyy-MM-dd').format(picked); // Update text field
-        user!.birthDate = picked; // Update di objek user
+        _birthDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+        user!.birthDate = picked;
       });
     }
   }
 
-  // Fungsi untuk menyimpan perubahan data user
   Future<void> _saveProfileChanges() async {
     print('DEBUG_EDIT_PROFILE: _currentUserId at start of _saveProfileChanges: $_currentUserId');
 
     if (user == null || _currentUserId == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Data pengguna tidak tersedia untuk disimpan.')),
       );
       return;
     }
 
+    if (!mounted) return;
     setState(() {
-      isLoading = true; // Tampilkan loading saat menyimpan
+      isLoading = true;
     });
 
-    // Update objek user dengan data dari controllers
     user!.username = _nameController.text;
     user!.email = _emailController.text;
     user!.phoneNumber = _phoneController.text;
-    // _selectedBirthDate sudah diupdate saat date picker dipilih
 
     try {
-
-       // --- DEBUGGING DATA YANG DIKIRIM ---
       print('DEBUG_EDIT_PROFILE: Sending user data:');
       print('  Username: ${_nameController.text}');
       print('  Email: ${_emailController.text}');
       print('  Phone Number: ${_phoneController.text}');
-      print('  Birth Date (DateTime obj): ${_selectedBirthDate?.toIso8601String()}'); // Format ISO 8601 untuk cek
-      // --- AKHIR DEBUGGING ---
-      // Panggil API service untuk update data user
+      print('  Birth Date (DateTime obj): ${_selectedBirthDate?.toIso8601String()}');
+
       await apiService.updateUserData(
         username: user!.username,
         email: user!.email,
@@ -171,32 +166,54 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         birthDate: user!.birthDate,
       );
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profil berhasil disimpan!')),
       );
 
-      // --- DEBUGGING _currentUserId ---
-      print('DEBUG_EDIT_PROFILE: _currentUserId before navigation: $_currentUserId');
-      // --- AKHIR DEBUGGING ---
+      // ADDED: Create a local variable to safely hold _currentUserId before navigation
+      final int? userIdForNavigation = _currentUserId;
+      print('DEBUG_EDIT_PROFILE: userIdForNavigation before navigation: $userIdForNavigation');
 
-      // Setelah berhasil disimpan, kembali ke ProfileScreen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ProfileScreen(userId: _currentUserId!),
-        ),
-      );
+      // ADDED: Crucial check: Ensure userIdForNavigation is not null before navigating
+      if (userIdForNavigation != null) {
+        print('DEBUG_EDIT_PROFILE: Navigating with non-null userId: $userIdForNavigation'); // NEW DEBUG PRINT
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            // Pastikan ProfileScreen memang membutuhkan int non-nullable.
+            // Jika ProfileScreen bisa menerima int?, Anda bisa hapus tanda '!'
+            // Tapi berdasarkan error, sepertinya ProfileScreen butuh int.
+            builder: (context) => ProfileScreen(userId: userIdForNavigation),
+          ),
+        );
+      } else {
+        print('DEBUG_EDIT_PROFILE: userIdForNavigation is null, showing error snackbar.'); // NEW DEBUG PRINT
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: ID pengguna tidak ditemukan setelah penyimpanan. Mohon login kembali.')),
+        );
+      }
+
     } catch (e) {
       print('Error saving profile: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan profil: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menyimpan profil: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
   @override
   void dispose() {
-    // Pastikan untuk membuang controllers saat widget di-dispose
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -206,7 +223,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Tampilkan CircularProgressIndicator jika data masih loading atau user null
     if (isLoading || user == null) {
       return const Scaffold(
         body: Center(
@@ -217,7 +233,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
     }
 
-    // Menggunakan controllers yang sudah diinisialisasi di fetchData
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: const Color.fromARGB(235, 255, 255, 255),
@@ -230,14 +245,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: _saveProfileChanges, // Panggil fungsi save perubahan
+            onPressed: _saveProfileChanges,
             child: const Text('Save', style: TextStyle(color: Colors.black)),
           ),
         ],
       ),
       body: Stack(
         children: [
-          // Gambar background
           SizedBox(
             height: 250,
             width: double.infinity,
@@ -255,7 +269,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
 
-          // Avatar profile dengan ikon kamera
           Positioned(
             top: 120,
             left: 0,
@@ -271,10 +284,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   const CircleAvatar(
                     radius: 46,
                     backgroundColor: Colors.white,
-                    // Tambahkan NetworkImage jika ada URL profil picture di user model
-                    // backgroundImage: user?.profilePictureUrl != null
-                    //     ? NetworkImage(user!.profilePictureUrl!)
-                    //     : null,
                   ),
                   Positioned(
                     bottom: 0,
@@ -291,7 +300,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
 
-          // Bagian Form (input data)
           Container(
             margin: const EdgeInsets.only(top: 350),
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
@@ -310,7 +318,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: 10),
                 _buildTextField(label: 'No. Handphone', controller: _phoneController),
                 const SizedBox(height: 10),
-                // Field untuk Tanggal Lahir dengan DatePicker
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -320,7 +327,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       onTap: () => _selectDate(context),
                       child: AbsorbPointer(
                         child: TextField(
-                          controller: _birthDateController, // Gunakan controller khusus tanggal
+                          controller: _birthDateController,
                           enabled: true,
                           style: const TextStyle(color: Colors.black),
                           decoration: InputDecoration(
@@ -347,10 +354,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  // Widget pembantu untuk membuat TextField
   Widget _buildTextField({
     required String label,
-    required TextEditingController controller, // Ubah ke required
+    required TextEditingController controller,
     String? hintText,
     bool enabled = true,
   }) {

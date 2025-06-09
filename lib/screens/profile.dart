@@ -209,6 +209,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _buildProgressIndicator(),
+                      const SizedBox(width: 16), // Memberi jarak antara progress dan poin
                       _buildPointsIndicator(), // Memanggil widget pembantu yang sekarang tangguh
                     ],
                   ),
@@ -247,7 +248,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       backgroundColor: const Color.fromRGBO(85, 132, 122, 0.97),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Log Out', style: TextStyle(color: Colors.white),),
+                    child: const Text('Log Out', style: TextStyle(color: Colors.white)),
                   ),
                   const SizedBox(height: 30),
                 ],
@@ -279,7 +280,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+
   Widget _buildProgressIndicator() {
+    // Pastikan completedMissionsCount dan totalMissionsCount selalu aman
+    final int safeCompleted = completedMissionsCount;
+    final int safeTotal = totalMissionsCount;
+
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -294,7 +300,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '$completedMissionsCount/$totalMissionsCount Misi',
+                '$safeCompleted/$safeTotal Misi', // <--- GUNAKAN VARIABEL AMAN INI
                 style: const TextStyle(
                   color: Colors.teal,
                   fontWeight: FontWeight.bold,

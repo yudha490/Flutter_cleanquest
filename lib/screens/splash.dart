@@ -1,4 +1,3 @@
-import 'package:cleanquest/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:cleanquest/screens/section.dart';
 import 'package:cleanquest/services/api_service.dart';
