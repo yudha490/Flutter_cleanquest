@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Hitung jumlah total misi dan misi yang sudah diselesaikan
       final completed = fetchedActiveUserMissions
-          .where((um) => um.isCompleted)
+          .where((um) => um.status == 'selesai')
           .length;
 
       setState(() {
@@ -329,12 +329,43 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMissionCard(Mission mission, UserMission userMission) {
-    print(mission.imageUrl);
+    // Tentukan warna dan teks badge berdasarkan status
+    Color badgeColor;
+    String badgeText;
+    IconData badgeIcon;
+
+    switch (userMission.status) {
+      case 'selesai':
+        badgeColor = Colors.green;
+        badgeText = 'Selesai';
+        badgeIcon = Icons.check;
+        break;
+      case 'pending':
+        badgeColor = Colors.orange;
+        badgeText = 'Pending';
+        badgeIcon = Icons. hourglass_empty; // Atau icon lain yang sesuai
+        break;
+      case 'belum dikerjakan':
+      default:
+        badgeColor = Colors.grey;
+        badgeText = 'Belum Dikerjakan';
+        badgeIcon = Icons.circle_outlined;
+        break;
+    }
+
     return GestureDetector(
       onTap: () {
-        if (!userMission.isCompleted) {
+        // REVISI: Hanya izinkan submit jika statusnya 'belum dikerjakan'
+        if (userMission.status == 'belum dikerjakan') {
           _showSubmitDialog(context, userMission);
-        } else {
+        } else if (userMission.status == 'pending') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Misi ini sedang dalam peninjauan (Pending).'),
+              backgroundColor: Colors.blueAccent,
+            ),
+          );
+        } else if (userMission.status == 'selesai') {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Misi ini sudah selesai!'),
@@ -345,73 +376,63 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       child: Card(
         margin: const EdgeInsets.only(bottom: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Column(
           children: [
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                   child: AspectRatio(
                     aspectRatio: 2,
                     child: Image.network(
-                      // Menggunakan Image.network untuk URL gambar
-                      mission.imageUrl ??
-                          'https://placehold.co/600x400/cccccc/333333?text=No+Image', // Fallback image
+                      mission.imageUrl ?? 'https://placehold.co/600x400/cccccc/333333?text=No+Image',
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
                           color: Colors.grey[300],
-                          child: const Icon(
-                            Icons.broken_image,
-                            size: 50,
-                            color: Colors.grey,
-                          ),
+                          child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
                         );
                       },
                     ),
                   ),
                 ),
-                if (userMission.isCompleted)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.check, color: Colors.white, size: 16),
-                          SizedBox(width: 4),
-                          Text(
-                            'Selesai',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
+                // REVISI: Tampilkan badge status berdasarkan nilai 'status'
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: badgeColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(badgeIcon, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          badgeText,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
+                ),
               ],
             ),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
                 color: Colors.teal,
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(16),
-                ),
+                borderRadius:
+                    BorderRadius.vertical(bottom: Radius.circular(16)),
               ),
               child: Row(
                 children: [

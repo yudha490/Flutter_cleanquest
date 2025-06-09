@@ -371,6 +371,26 @@ class ApiService {
       return false;
     }
   }
+    Future<List<UserMission>> getUserMissionsByStatus(int userId, List<String> statuses) async {
+    // Bangun URL dengan parameter query untuk statuses
+    final Map<String, dynamic> queryParams = {
+      'statuses[]': statuses, // Kirim sebagai array parameter
+    };
+    final url = Uri.parse('$_baseUrl/user-missions-history/$userId').replace(queryParameters: queryParams);
+
+    final response = await http.get(
+      url,
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      final List<dynamic> userMissionData = data['user_missions'];
+      return userMissionData.map((json) => UserMission.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load user missions history: ${response.body}');
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Voucher
