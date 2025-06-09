@@ -95,6 +95,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void showCustomDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: SingleChildScrollView(
+            child: Text(content),
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, right: 8.0),
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromRGBO(85, 132, 122, 0.97),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  minimumSize: const Size(0, 0),
+                ),
+                child: const Text(
+                  "Tutup",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // 1. Tampilkan layar loading penuh
@@ -233,8 +270,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           );
                           }
                         ),
-                        _buildListTile(icon: Icons.help_outline, title: 'Pusat Bantuan', onTap: () { print('Navigasi ke Pusat Bantuan'); }),
-                        _buildListTile(icon: Icons.description_outlined, title: 'Syarat dan Ketentuan', onTap: () { print('Navigasi ke Syarat dan Ketentuan'); }),
+                        _buildListTile(icon: Icons.help_outline, title: 'Pusat Bantuan', onTap: () {
+                            print('Navigasi ke Pusat Bantuan'); 
+                            showCustomDialog(
+                            "Pusat Bantuan",
+                            '''Q: Bagaimana cara menyelesaikan misi?
+A: Ikuti instruksi yang tersedia di halaman utama aplikasi.
+
+Q: Mengapa poin saya tidak bertambah?
+A: Pastikan misi diselesaikan dengan benar dan koneksi internet stabil.
+
+Q: Bagaimana cara menukarkan poin?
+A: Buka halaman Reward dan pilih hadiah yang tersedia.
+
+Q: Bagaimana cara edit profil?
+A: Tekan tombol “Edit” di kanan atas halaman profil, lalu ubah data yang diinginkan. Setelah selesai, tekan save di kanan atas.
+
+Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
+                            ''',
+                          );
+                          }
+                        ),
+                        _buildListTile(icon: Icons.description_outlined, title: 'Syarat dan Ketentuan', onTap: () {
+                            print('Navigasi ke Syarat dan Ketentuan'); 
+                            showCustomDialog(
+                              "Syarat dan Ketentuan",
+                              '''1. Poin hanya dapat ditukarkan dengan hadiah dalam aplikasi.
+2. Manipulasi sistem misi akan dikenai sanksi.
+3. Data pengguna dilindungi dan tidak dibagikan tanpa izin.
+4. Penggunaan aplikasi tunduk pada perubahan kebijakan sewaktu-waktu.
+5. Pengembang tidak bertanggung jawab atas kehilangan data atau kerugian akibat penyalahgunaan akun oleh pihak ketiga (misalnya, teman, keluarga, atau orang lain yang mengakses akun Anda tanpa izin).
+                              ''',
+                            );
+                          }
+                        ),
                       ],
                     ),
                   ),
