@@ -91,7 +91,8 @@ class LoginPageState extends State<LoginPage> {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => const RegisterPage()),
+                          builder: (context) => const RegisterPage(),
+                        ),
                       );
                     },
                     child: const Text(
@@ -183,9 +184,7 @@ class LoginPageState extends State<LoginPage> {
         child: AnimatedScale(
           scale: scale,
           duration: const Duration(milliseconds: 100),
-          child: Image.asset(
-            'assets/images/button.png',
-          ),
+          child: Image.asset('assets/images/button.png'),
         ),
       ),
     );
@@ -194,6 +193,9 @@ class LoginPageState extends State<LoginPage> {
   void _login() async {
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
+
+    // Check if widget is still mounted before showing SnackBar
+    if (!mounted) return;
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -205,7 +207,8 @@ class LoginPageState extends State<LoginPage> {
     if (password.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Password harus terdiri dari minimal 8 karakter')),
+          content: Text('Password harus terdiri dari minimal 8 karakter'),
+        ),
       );
       return;
     }
@@ -215,6 +218,9 @@ class LoginPageState extends State<LoginPage> {
         email: email,
         password: password,
       );
+
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
 
       if (response['success']) {
         print('Login berhasil: ${response['message']}');
@@ -227,9 +233,10 @@ class LoginPageState extends State<LoginPage> {
       } else {
         // REVISI: Penanganan error yang lebih detail
         String errorMessage = 'Login gagal';
-        if (response.containsKey('message')) { // Untuk pesan error generik dari ApiService
+        if (response.containsKey('message')) {
           errorMessage = response['message'].toString();
-        } else if (response.containsKey('data') && response['data'] is Map<String, dynamic>) {
+        } else if (response.containsKey('data') &&
+            response['data'] is Map<String, dynamic>) {
           final backendResponse = response['data'] as Map<String, dynamic>;
           if (backendResponse.containsKey('message')) {
             errorMessage = backendResponse['message'].toString();
@@ -237,17 +244,21 @@ class LoginPageState extends State<LoginPage> {
           if (backendResponse.containsKey('errors')) {
             final errors = backendResponse['errors'] as Map<String, dynamic>;
             errors.forEach((field, messages) {
-              errorMessage += '\n${field.toUpperCase()}: ${(messages as List).join(', ')}';
+              errorMessage +=
+                  '\n${field.toUpperCase()}: ${(messages as List).join(', ')}';
             });
           }
         }
 
         print('Login gagal: $errorMessage');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } catch (e) {
+      // Check if widget is still mounted before showing error SnackBar
+      if (!mounted) return;
+
       print('Error selama login: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Terjadi kesalahan. Coba lagi nanti')),
@@ -255,4 +266,3 @@ class LoginPageState extends State<LoginPage> {
     }
   }
 }
-

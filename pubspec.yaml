@@ -33,7 +33,7 @@ dependencies:
     sdk: flutter
   http: ^1.2.2
   shared_preferences: ^2.2.3
-  intl: ^0.19.0 # untuk format tanggal
+  intl: ^0.20.2 # untuk format tanggal
   image_picker: ^1.0.7
   build_runner: ^2.4.6
   provider: ^6.1.2

@@ -5,10 +5,6 @@ import '../models/mission.dart';
 import '../models/user.dart';
 import '../models/user_mission.dart';
 import '../services/api_service.dart';
-// Hapus import 'package:image_picker/image_picker.dart';
-// Hapus import 'dart:io';
-import 'package:shared_preferences/shared_preferences.dart';
-
 
 class HomeScreen extends StatefulWidget {
   final int userId;
@@ -20,41 +16,33 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late User user;
+  User? user;
   late ApiService apiService;
-  List<UserMission> activeUserMissions = []; // Menyimpan UserMission yang aktif
+  List<UserMission> activeUserMissions = [];
   int completedMissionsCount = 0;
   int totalMissionsCount = 0;
   bool isLoading = true;
-  Future<void> _getTokenAndPrint() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('authToken');
-    if (token != null) {
-      print('Stored Auth Token: $token');
-    } else {
-      print('No Auth Token found.');
-    }
-  }
+  String _errorMessage = '';
+
   @override
   void initState() {
     super.initState();
     apiService = ApiService();
     fetchData();
-    _getTokenAndPrint();
   }
 
   Future<void> fetchData() async {
     setState(() {
       isLoading = true;
+      _errorMessage = '';
+      user = null;
     });
     try {
-      // Mengambil data user yang sedang login
       final fetchedUser = await apiService.getUserData(widget.userId);
-      // Mengambil misi aktif untuk user ini (sekarang mengembalikan List<UserMission>)
       final fetchedActiveUserMissions = await apiService.getMissions();
 
-      // Hitung jumlah total misi dan misi yang sudah diselesaikan
-      final completed = fetchedActiveUserMissions.where((um) => um.isCompleted).length;
+      // REVISI: Hitung misi yang statusnya 'selesai'
+      final completed = fetchedActiveUserMissions.where((um) => um.status == 'selesai').length;
 
       setState(() {
         user = fetchedUser;
@@ -67,10 +55,14 @@ class _HomeScreenState extends State<HomeScreen> {
       print('Error fetching data: $e');
       setState(() {
         isLoading = false;
+        user = null;
+        _errorMessage = 'Gagal memuat data: ${e.toString()}';
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat data: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat data: ${e.toString()}')),
+        );
+      }
     }
   }
 
@@ -78,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final TextEditingController _linkController = TextEditingController();
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog( // Menggunakan dialogContext untuk dialog
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Kirim Bukti Misi'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -97,16 +89,19 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext), // Tutup dialog dengan dialogContext
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Batal'),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(dialogContext); // Tutup dialog
+              Navigator.pop(dialogContext);
+
+              if (!mounted) return;
+
               final String proofUrl = _linkController.text.trim();
 
               if (proofUrl.isEmpty) {
-                if (mounted) { // REVISI: Tambahkan cek mounted
+                if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Link bukti tidak boleh kosong!'),
@@ -123,12 +118,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   proofUrl: proofUrl,
                 );
 
-                if (!mounted) return; // REVISI: Tambahkan cek mounted setelah await
+                if (!mounted) return;
 
                 if (success) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Bukti misi berhasil disubmit!'),
+                      content: Text('Bukti misi berhasil disubmit! Status: Pending.'),
                       duration: Duration(seconds: 3),
                       backgroundColor: Color.fromRGBO(76, 175, 80, 1),
                     ),
@@ -145,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               } catch (e) {
                 print('Error submitting proof: $e');
-                if (mounted) { // REVISI: Tambahkan cek mounted
+                if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Terjadi kesalahan: ${e.toString()}'),
@@ -168,46 +163,50 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/background.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-              child: SafeArea(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 66),
-                        Text(
-                          'Halo ${user.username}!',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+          : _errorMessage.isNotEmpty
+              ? Center(child: Text(_errorMessage, style: const TextStyle(color: Colors.red)))
+              : user == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : Container(
+                      decoration: const BoxDecoration(
+                        image: DecorationImage(
+                          image: AssetImage('assets/images/background.png'),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      child: SafeArea(
+                        child: SingleChildScrollView(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 66),
+                                Text(
+                                  'Halo ${user!.username}!',
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                _buildUserStats(),
+                                const SizedBox(height: 32),
+                                const Text(
+                                  'Misi Hari Ini',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                _buildMissionList(),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        _buildUserStats(),
-                        const SizedBox(height: 32),
-                        const Text(
-                          'Misi Hari Ini',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildMissionList(),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            ),
       bottomNavigationBar: _buildBottomNavBar(),
     );
   }
@@ -270,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const Icon(Icons.star, color: Colors.amber),
           const SizedBox(width: 8),
           Text(
-            '${user.points} Poin',
+            '${user?.points ?? 0} Poin',
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -299,10 +298,10 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: activeUserMissions.length,
       itemBuilder: (context, index) {
         final userMission = activeUserMissions[index];
-        final mission = userMission.mission; // Dapatkan objek Mission dari UserMission
+        final mission = userMission.mission;
 
         if (mission == null) {
-          return const SizedBox.shrink(); // Jangan tampilkan jika misi tidak ada
+          return const SizedBox.shrink();
         }
 
         return _buildMissionCard(mission, userMission);
@@ -311,12 +310,43 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMissionCard(Mission mission, UserMission userMission) {
-    print(mission.imageUrl);
+    // Tentukan warna dan teks badge berdasarkan status
+    Color badgeColor;
+    String badgeText;
+    IconData badgeIcon;
+
+    switch (userMission.status) {
+      case 'selesai':
+        badgeColor = Colors.green;
+        badgeText = 'Selesai';
+        badgeIcon = Icons.check;
+        break;
+      case 'pending':
+        badgeColor = Colors.orange;
+        badgeText = 'Pending';
+        badgeIcon = Icons. hourglass_empty; // Atau icon lain yang sesuai
+        break;
+      case 'belum dikerjakan':
+      default:
+        badgeColor = Colors.grey;
+        badgeText = 'Belum Dikerjakan';
+        badgeIcon = Icons.circle_outlined;
+        break;
+    }
+
     return GestureDetector(
       onTap: () {
-        if (!userMission.isCompleted) {
+        // REVISI: Hanya izinkan submit jika statusnya 'belum dikerjakan'
+        if (userMission.status == 'belum dikerjakan') {
           _showSubmitDialog(context, userMission);
-        } else {
+        } else if (userMission.status == 'pending') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Misi ini sedang dalam peninjauan (Pending).'),
+              backgroundColor: Colors.blueAccent,
+            ),
+          );
+        } else if (userMission.status == 'selesai') {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Misi ini sudah selesai!'),
@@ -338,8 +368,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                   child: AspectRatio(
                     aspectRatio: 2,
-                    child: Image.network( // Menggunakan Image.network untuk URL gambar
-                      mission.imageUrl ?? 'https://placehold.co/600x400/cccccc/333333?text=No+Image', // Fallback image
+                    child: Image.network(
+                      mission.imageUrl ?? 'https://placehold.co/600x400/cccccc/333333?text=No+Image',
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
@@ -350,32 +380,32 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                if (userMission.isCompleted)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.check, color: Colors.white, size: 16),
-                          SizedBox(width: 4),
-                          Text(
-                            'Selesai',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
+                // REVISI: Tampilkan badge status berdasarkan nilai 'status'
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: badgeColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(badgeIcon, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          badgeText,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
+                ),
               ],
             ),
             Container(
@@ -421,22 +451,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBottomNavBar() {
     return BottomNavigationBar(
-      currentIndex: 0, // Home is the default selected tab
+      currentIndex: 0,
       onTap: (index) {
         if (index == 0) {
           // Stay on Home screen
-          // No need to pushReplacement if already on the same screen
         } else if (index == 1) {
-          // Navigate to Reward screen
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => RewardScreen(userId: user.id)),
+            MaterialPageRoute(builder: (context) => RewardScreen(userId: user!.id)),
           );
         } else if (index == 2) {
-          // Navigate to Profile screen
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => ProfileScreen(userId: user.id)),
+            MaterialPageRoute(builder: (context) => ProfileScreen(userId: user!.id)),
           );
         }
       },
@@ -457,3 +484,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
