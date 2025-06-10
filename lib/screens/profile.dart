@@ -55,7 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // PENTING: Mengambil data user yang sedang login menggunakan token
       // API service getUserData sekarang dirancang untuk mengambil user dari token,
       // sehingga parameter userId di sini bisa diabaikan atau diisi null.
-      final fetchedUser = await apiService.getUserData(null); // <--- Ini yang mengambil data user
+      final fetchedUser = await apiService.getUserData(widget.userId); // <--- Ini yang mengambil data user
 
       // Jika fetchedUser bisa null (misal jika token expired atau tidak ada user), tangani.
       if (fetchedUser == null) {
@@ -94,6 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
   }
+
   void showCustomDialog(String title, String content) {
     showDialog(
       context: context,
@@ -215,7 +216,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const EditProfileScreen(), // <--- Tidak perlu userId di sini
+                              builder: (context) => EditProfileScreen(userId: widget.userId), // <--- Tidak perlu userId di sini
                             ),
                           ).then((_) => fetchData()); // Refresh data setelah kembali
                         },
@@ -326,7 +327,7 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
                       backgroundColor: const Color.fromRGBO(85, 132, 122, 0.97),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Log Out', style: TextStyle(color: Colors.white)),
+                    child: const Text('Log Out', style: TextStyle(color: Colors.white),),
                   ),
                   const SizedBox(height: 30),
                 ],
@@ -358,12 +359,7 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
     );
   }
 
-
   Widget _buildProgressIndicator() {
-    // Pastikan completedMissionsCount dan totalMissionsCount selalu aman
-    final int safeCompleted = completedMissionsCount;
-    final int safeTotal = totalMissionsCount;
-
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -378,7 +374,7 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '$safeCompleted/$safeTotal Misi', // <--- GUNAKAN VARIABEL AMAN INI
+                '$completedMissionsCount/$totalMissionsCount Misi',
                 style: const TextStyle(
                   color: Colors.teal,
                   fontWeight: FontWeight.bold,

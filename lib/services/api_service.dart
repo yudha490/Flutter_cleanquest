@@ -392,6 +392,22 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> updateUserProfile(Map<String, dynamic> userData) async {
+    final url = Uri.parse('$_baseUrl/user/profile');
+    final response = await http.post( // Menggunakan POST karena laravel Sanctum defaultnya POST untuk update profil
+      url,
+      headers: await _getHeaders(),
+      body: jsonEncode(userData),
+    );
+
+    final responseData = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return {'success': true, 'message': responseData['message'], 'user': responseData['user']};
+    } else {
+      return {'success': false, 'data': responseData}; // Mengembalikan seluruh responseData untuk error
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Voucher
   // ---------------------------------------------------------------------------
