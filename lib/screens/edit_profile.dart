@@ -1,103 +1,76 @@
-// Tubees_PPB/lib/screens/edit_profile.dart
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../models/user.dart';
-import 'package:cleanquest/screens/profile.dart'; // Pastikan path ini benar
-import '../services/api_service.dart'; // Pastikan path ini benar
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cleanquest/screens/profile.dart';
+import 'package:cleanquest/services/api_service.dart'; // Import ApiService
+import 'package:cleanquest/models/user.dart'; // Import User model
+import 'package:intl/intl.dart'; // For date formatting
 
 class EditProfileScreen extends StatefulWidget {
-  final int? userId;
+  final int userId; // Menerima userId dari ProfileScreen
 
-  const EditProfileScreen({Key? key, this.userId}) : super(key: key);
+  const EditProfileScreen({Key? key, required this.userId}) : super(key: key);
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  User? user;
-  late ApiService apiService;
-  bool isLoading = true;
-  int? _currentUserId;
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _birthDateController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
-  DateTime? _selectedBirthDate;
-
-  static const Color _primaryGreen = Color.fromRGBO(85, 132, 122, 0.97);
-
-  late TextEditingController _nameController;
-  late TextEditingController _emailController;
-  late TextEditingController _phoneController;
-  late TextEditingController _birthDateController;
+  late ApiService _apiService;
+  User? _currentUser;
+  bool _isLoading = true;
+  DateTime? _selectedDate;
 
   @override
   void initState() {
     super.initState();
-    apiService = ApiService();
-    _initializeUserData();
+    _apiService = ApiService();
+    _fetchUserProfile();
   }
 
-  Future<void> _initializeUserData() async {
-    if (widget.userId != null) {
-      _currentUserId = widget.userId;
-    } else {
-      final prefs = await SharedPreferences.getInstance();
-      _currentUserId = prefs.getInt('currentUserId');
-      String? token = prefs.getString('authToken');
-      if (token != null) {
-        print('Stored Auth Token: $token');
-      } else {
-        print('No Auth Token found.');
-      }
-    }
-
-    print('DEBUG_EDIT_PROFILE: _currentUserId in _initializeUserData: $_currentUserId');
-
-    if (!mounted) return;
-
-    if (_currentUserId != null) {
-      fetchData(_currentUserId!);
-    } else {
-      setState(() {
-        isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ID pengguna tidak ditemukan. Harap login kembali.')),
-        );
-      }
-    }
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _birthDateController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 
-  Future<void> fetchData(int userIdToFetch) async {
+  Future<void> _fetchUserProfile() async {
     setState(() {
-      isLoading = true;
+      _isLoading = true;
     });
     try {
-      final fetchedUser = await apiService.getUserData(userIdToFetch);
-      if (!mounted) return;
-      setState(() {
-        user = fetchedUser;
-        _selectedBirthDate = user!.birthDate;
-
-        _nameController = TextEditingController(text: user!.username);
-        _emailController = TextEditingController(text: user!.email);
-        _phoneController = TextEditingController(text: user!.phoneNumber);
-        _birthDateController = TextEditingController(
-          text: _selectedBirthDate != null
-              ? DateFormat('yyyy-MM-dd').format(_selectedBirthDate!)
-              : 'Pilih Tanggal Lahir',
-        );
-        isLoading = false;
-      });
-    } catch (e) {
-      print('Error fetching data: $e');
-      if (!mounted) return;
-      setState(() {
-        isLoading = false;
-      });
+      final user = await _apiService.getUserData(widget.userId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat data: $e')));
+        setState(() {
+          _currentUser = user!;
+          _usernameController.text = user.username;
+          _emailController.text = user.email;
+          _phoneController.text = user.phoneNumber;
+          _birthDateController.text = DateFormat('yyyy-MM-dd').format(user.birthDate);
+          _selectedDate = user.birthDate; // Set initial selected date
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching user profile: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _currentUser = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat profil pengguna: ${e.toString()}')),
+        );
       }
     }
   }
@@ -105,131 +78,106 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedBirthDate ?? DateTime.now(),
+      initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
-      builder: (BuildContext context, Widget? child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: _primaryGreen,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-            dialogBackgroundColor: Colors.white,
-          ),
-          child: child!,
-        );
-      },
     );
-    if (picked != null && picked != _selectedBirthDate) {
-      if (!mounted) return;
+    if (picked != null && picked != _selectedDate) {
       setState(() {
-        _selectedBirthDate = picked;
+        _selectedDate = picked;
         _birthDateController.text = DateFormat('yyyy-MM-dd').format(picked);
-        user!.birthDate = picked;
       });
     }
   }
 
-  Future<void> _saveProfileChanges() async {
-    print('DEBUG_EDIT_PROFILE: _currentUserId at start of _saveProfileChanges: $_currentUserId');
+  Future<void> _saveProfile() async {
+    if (!mounted) return; // Add mounted check before async operations
 
-    if (user == null || _currentUserId == null) {
-      if (!mounted) return;
+    // Basic frontend validation
+    if (_usernameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _phoneController.text.isEmpty ||
+        _birthDateController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Data pengguna tidak tersedia untuk disimpan.')),
+        const SnackBar(content: Text('Semua field wajib diisi!')),
       );
       return;
     }
 
-    if (!mounted) return;
+    if (_passwordController.text.isNotEmpty &&
+        _passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Konfirmasi password tidak cocok!')),
+      );
+      return;
+    }
+
     setState(() {
-      isLoading = true;
+      _isLoading = true;
     });
 
-    user!.username = _nameController.text;
-    user!.email = _emailController.text;
-    user!.phoneNumber = _phoneController.text;
-
     try {
-      print('DEBUG_EDIT_PROFILE: Sending user data:');
-      print('  Username: ${_nameController.text}');
-      print('  Email: ${_emailController.text}');
-      print('  Phone Number: ${_phoneController.text}');
-      print('  Birth Date (DateTime obj): ${_selectedBirthDate?.toIso8601String()}');
+      final Map<String, dynamic> dataToUpdate = {
+        'username': _usernameController.text,
+        'email': _emailController.text,
+        'phone_number': _phoneController.text,
+        'birth_date': _birthDateController.text,
+      };
 
-      await apiService.updateUserData(
-        username: user!.username,
-        email: user!.email,
-        phoneNumber: user!.phoneNumber,
-        birthDate: user!.birthDate,
-      );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profil berhasil disimpan!')),
-      );
-
-      // ADDED: Create a local variable to safely hold _currentUserId before navigation
-      final int? userIdForNavigation = _currentUserId;
-      print('DEBUG_EDIT_PROFILE: userIdForNavigation before navigation: $userIdForNavigation');
-
-      // ADDED: Crucial check: Ensure userIdForNavigation is not null before navigating
-      if (userIdForNavigation != null) {
-        print('DEBUG_EDIT_PROFILE: Navigating with non-null userId: $userIdForNavigation'); // NEW DEBUG PRINT
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            // Pastikan ProfileScreen memang membutuhkan int non-nullable.
-            // Jika ProfileScreen bisa menerima int?, Anda bisa hapus tanda '!'
-            // Tapi berdasarkan error, sepertinya ProfileScreen butuh int.
-            builder: (context) => ProfileScreen(userId: userIdForNavigation),
-          ),
-        );
-      } else {
-        print('DEBUG_EDIT_PROFILE: userIdForNavigation is null, showing error snackbar.'); // NEW DEBUG PRINT
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error: ID pengguna tidak ditemukan setelah penyimpanan. Mohon login kembali.')),
-        );
+      if (_passwordController.text.isNotEmpty) {
+        dataToUpdate['password'] = _passwordController.text;
+        dataToUpdate['password_confirmation'] = _confirmPasswordController.text;
       }
 
+      final response = await _apiService.updateUserProfile(dataToUpdate);
+
+      if (!mounted) return; // Add mounted check after async operations
+
+      if (response['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['message'])),
+        );
+        Navigator.pop(context, true); // Pop with true to indicate success for refresh
+      } else {
+        String errorMessage = 'Gagal memperbarui profil.';
+        if (response.containsKey('data') && response['data'] is Map<String, dynamic>) {
+          final backendResponse = response['data'] as Map<String, dynamic>;
+          if (backendResponse.containsKey('message')) {
+            errorMessage = backendResponse['message'].toString();
+          }
+          if (backendResponse.containsKey('errors')) {
+            final errors = backendResponse['errors'] as Map<String, dynamic>;
+            errors.forEach((field, messages) {
+              errorMessage += '\n${field.toUpperCase()}: ${(messages as List).join(', ')}';
+            });
+          }
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
     } catch (e) {
       print('Error saving profile: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menyimpan profil: $e')),
+          SnackBar(content: Text('Terjadi kesalahan: ${e.toString()}')),
         );
       }
     } finally {
       if (mounted) {
         setState(() {
-          isLoading = false;
+          _isLoading = false;
         });
       }
     }
   }
 
   @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _birthDateController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (isLoading || user == null) {
+    if (_isLoading) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(
-            color: _primaryGreen,
-          ),
-        ),
+        backgroundColor: Color.fromARGB(235, 255, 255, 255),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -245,30 +193,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: _saveProfileChanges,
+            onPressed: _saveProfile, // Panggil _saveProfile
             child: const Text('Save', style: TextStyle(color: Colors.black)),
           ),
         ],
       ),
       body: Stack(
         children: [
+          // Gambar background
           SizedBox(
             height: 250,
             width: double.infinity,
             child: Image.asset(
               'assets/images/background.png',
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: Colors.grey[300],
-                  child: const Center(
-                    child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
-                  ),
-                );
-              },
             ),
           ),
 
+          // Avatar profile
           Positioned(
             top: 120,
             left: 0,
@@ -279,18 +221,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 children: [
                   const CircleAvatar(
                     radius: 50,
-                    backgroundColor: Colors.black,
-                  ),
-                  const CircleAvatar(
-                    radius: 46,
-                    backgroundColor: Colors.white,
+                    backgroundColor: Color(0xFFE0DDFB),
+                    child: Icon(Icons.person, size: 50, color: Colors.white),
                   ),
                   Positioned(
                     bottom: 0,
                     right: 0,
                     child: CircleAvatar(
                       radius: 15,
-                      backgroundColor: _primaryGreen,
+                      backgroundColor: const Color.fromRGBO(85, 132, 122, 0.97),
                       child: const Icon(Icons.camera_alt,
                           size: 15, color: Colors.white),
                     ),
@@ -300,11 +239,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
 
+          // Form
           Container(
             margin: const EdgeInsets.only(top: 350),
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
             decoration: const BoxDecoration(
-              color: _primaryGreen,
+              color: Color.fromRGBO(85, 132, 122, 0.97),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(30),
                 topRight: Radius.circular(30),
@@ -312,40 +252,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             child: ListView(
               children: [
-                _buildTextField(label: 'Nama', controller: _nameController),
+                _buildTextField(label: 'Nama', controller: _usernameController),
                 const SizedBox(height: 10),
                 _buildTextField(label: 'Email', controller: _emailController),
                 const SizedBox(height: 10),
                 _buildTextField(label: 'No. Handphone', controller: _phoneController),
                 const SizedBox(height: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Tanggal Lahir', style: TextStyle(color: Colors.white)),
-                    const SizedBox(height: 5),
-                    GestureDetector(
-                      onTap: () => _selectDate(context),
-                      child: AbsorbPointer(
-                        child: TextField(
-                          controller: _birthDateController,
-                          enabled: true,
-                          style: const TextStyle(color: Colors.black),
-                          decoration: InputDecoration(
-                            hintText: 'Pilih Tanggal Lahir',
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding:
-                                const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                _buildDateField(context, label: 'Tanggal Lahir', controller: _birthDateController), // REVISI: Gunakan _buildDateField
+                const SizedBox(height: 20),
+                _buildTextField(label: 'Password Baru (opsional)', controller: _passwordController, isPassword: true),
+                const SizedBox(height: 10),
+                _buildTextField(label: 'Konfirmasi Password Baru', controller: _confirmPasswordController, isPassword: true),
               ],
             ),
           ),
@@ -356,9 +273,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Widget _buildTextField({
     required String label,
-    required TextEditingController controller,
+    TextEditingController? controller,
     String? hintText,
     bool enabled = true,
+    bool isPassword = false, // Tambahkan parameter isPassword
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,6 +286,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         TextField(
           controller: controller,
           enabled: enabled,
+          obscureText: isPassword, // Gunakan isPassword
           style: const TextStyle(color: Colors.black),
           decoration: InputDecoration(
             hintText: hintText,
@@ -379,6 +298,37 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide.none,
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Widget untuk input tanggal lahir
+  Widget _buildDateField(BuildContext context, {
+    required String label,
+    required TextEditingController controller,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white)),
+        const SizedBox(height: 5),
+        TextField(
+          controller: controller,
+          readOnly: true, // Membuat field tidak bisa diketik manual
+          onTap: () => _selectDate(context), // Memanggil date picker saat ditekan
+          style: const TextStyle(color: Colors.black),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+            suffixIcon: const Icon(Icons.calendar_today), // Icon kalender
           ),
         ),
       ],
