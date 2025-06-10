@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'screens/splash.dart'; // Ensure this path is correct for your SplashScreen
+import 'package:intl/date_symbol_data_local.dart';
 
-void main() => runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Pastikan Flutter binding sudah diinisialisasi
+  await initializeDateFormatting('id_ID', null); // Inisialisasi data locale untuk Bahasa Indonesia
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

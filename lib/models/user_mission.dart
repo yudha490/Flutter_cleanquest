@@ -1,20 +1,22 @@
-import 'mission.dart'; // Import Mission model
+import 'mission.dart';
 
 class UserMission {
   final int id;
   final int userId;
   final int missionId;
-  String? proof; // Nullable string for URL
-  bool isCompleted; // Tetap bool
-  final Mission? mission; // Optional: to hold the related Mission object
+  String? proof;
+  String status;
+  final Mission? mission;
+  final DateTime? createdAt; 
 
   UserMission({
     required this.id,
     required this.userId,
     required this.missionId,
     this.proof,
-    required this.isCompleted,
+    required this.status,
     this.mission,
+    this.createdAt, 
   });
 
   factory UserMission.fromJson(Map<String, dynamic> json) {
@@ -23,10 +25,9 @@ class UserMission {
       userId: json['user_id'],
       missionId: json['mission_id'],
       proof: json['proof'],
-      // REVISI: Konversi is_completed secara eksplisit ke boolean
-      isCompleted: json['is_completed'] == 1 || json['is_completed'] == true,
-      // If 'mission' is nested, parse it
+      status: json['status'],
       mission: json['mission'] != null ? Mission.fromJson(json['mission']) : null,
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null, // Tambahkan ini
     );
   }
 
@@ -36,9 +37,9 @@ class UserMission {
       'user_id': userId,
       'mission_id': missionId,
       'proof': proof,
-      'is_completed': isCompleted,
-      'mission': mission?.toJson(), // Include mission data if available
+      'status': status,
+      'mission': mission?.toJson(),
+      'created_at': createdAt?.toIso8601String(),
     };
   }
 }
-
