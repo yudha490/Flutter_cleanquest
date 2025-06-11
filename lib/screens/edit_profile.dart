@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cleanquest/screens/profile.dart';
 import 'package:cleanquest/services/api_service.dart'; // Import ApiService
 import 'package:cleanquest/models/user.dart'; // Import User model
 import 'package:intl/intl.dart'; // For date formatting
@@ -19,7 +18,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _birthDateController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   late ApiService _apiService;
   User? _currentUser;
@@ -56,7 +56,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _usernameController.text = user.username;
           _emailController.text = user.email;
           _phoneController.text = user.phoneNumber;
-          _birthDateController.text = DateFormat('yyyy-MM-dd').format(user.birthDate);
+          _birthDateController.text = DateFormat(
+            'yyyy-MM-dd',
+          ).format(user.birthDate);
           _selectedDate = user.birthDate; // Set initial selected date
           _isLoading = false;
         });
@@ -69,7 +71,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _currentUser = null;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memuat profil pengguna: ${e.toString()}')),
+          SnackBar(
+            content: Text('Gagal memuat profil pengguna: ${e.toString()}'),
+          ),
         );
       }
     }
@@ -98,9 +102,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _emailController.text.isEmpty ||
         _phoneController.text.isEmpty ||
         _birthDateController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Semua field wajib diisi!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Semua field wajib diisi!')));
       return;
     }
 
@@ -134,13 +138,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (!mounted) return; // Add mounted check after async operations
 
       if (response['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response['message'])),
-        );
-        Navigator.pop(context, true); // Pop with true to indicate success for refresh
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(response['message'])));
+        Navigator.pop(
+          context,
+          true,
+        ); // Pop with true to indicate success for refresh
       } else {
         String errorMessage = 'Gagal memperbarui profil.';
-        if (response.containsKey('data') && response['data'] is Map<String, dynamic>) {
+        if (response.containsKey('data') &&
+            response['data'] is Map<String, dynamic>) {
           final backendResponse = response['data'] as Map<String, dynamic>;
           if (backendResponse.containsKey('message')) {
             errorMessage = backendResponse['message'].toString();
@@ -148,13 +156,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           if (backendResponse.containsKey('errors')) {
             final errors = backendResponse['errors'] as Map<String, dynamic>;
             errors.forEach((field, messages) {
-              errorMessage += '\n${field.toUpperCase()}: ${(messages as List).join(', ')}';
+              errorMessage +=
+                  '\n${field.toUpperCase()}: ${(messages as List).join(', ')}';
             });
           }
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } catch (e) {
       print('Error saving profile: $e');
@@ -227,11 +236,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Positioned(
                     bottom: 0,
                     right: 0,
-                    child: CircleAvatar(
-                      radius: 15,
-                      backgroundColor: const Color.fromRGBO(85, 132, 122, 0.97),
-                      child: const Icon(Icons.camera_alt,
-                          size: 15, color: Colors.white),
+                    child: GestureDetector(
+                      onTap: () {
+                        print("ara bau eek");
+                      },
+                      child: CircleAvatar(
+                        radius: 15,
+                        backgroundColor: const Color.fromRGBO(
+                          85,
+                          132,
+                          122,
+                          0.97,
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          size: 15,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -256,13 +278,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: 10),
                 _buildTextField(label: 'Email', controller: _emailController),
                 const SizedBox(height: 10),
-                _buildTextField(label: 'No. Handphone', controller: _phoneController),
+                _buildTextField(
+                  label: 'No. Handphone',
+                  controller: _phoneController,
+                ),
                 const SizedBox(height: 10),
-                _buildDateField(context, label: 'Tanggal Lahir', controller: _birthDateController), // REVISI: Gunakan _buildDateField
+                _buildDateField(
+                  context,
+                  label: 'Tanggal Lahir',
+                  controller: _birthDateController,
+                ), // REVISI: Gunakan _buildDateField
                 const SizedBox(height: 20),
-                _buildTextField(label: 'Password Baru (opsional)', controller: _passwordController, isPassword: true),
+                _buildTextField(
+                  label: 'Password Baru (opsional)',
+                  controller: _passwordController,
+                  isPassword: true,
+                ),
                 const SizedBox(height: 10),
-                _buildTextField(label: 'Konfirmasi Password Baru', controller: _confirmPasswordController, isPassword: true),
+                _buildTextField(
+                  label: 'Konfirmasi Password Baru',
+                  controller: _confirmPasswordController,
+                  isPassword: true,
+                ),
               ],
             ),
           ),
@@ -292,8 +329,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             hintText: hintText,
             filled: true,
             fillColor: Colors.white,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide.none,
@@ -305,7 +344,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   // Widget untuk input tanggal lahir
-  Widget _buildDateField(BuildContext context, {
+  Widget _buildDateField(
+    BuildContext context, {
     required String label,
     required TextEditingController controller,
   }) {
@@ -317,13 +357,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         TextField(
           controller: controller,
           readOnly: true, // Membuat field tidak bisa diketik manual
-          onTap: () => _selectDate(context), // Memanggil date picker saat ditekan
+          onTap: () =>
+              _selectDate(context), // Memanggil date picker saat ditekan
           style: const TextStyle(color: Colors.black),
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.white,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide.none,

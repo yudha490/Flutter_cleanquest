@@ -41,47 +41,6 @@ class ApiService {
     }
   }
 
-  Future<User> updateUserData({
-    // Hapus `int userId` dari parameter
-    String? username,
-    String? email,
-    String? phoneNumber,
-    DateTime? birthDate,
-  }) async {
-    final token = await _getToken();
-    if (token == null) {
-      throw Exception('Autentikasi diperlukan. Tidak ada token ditemukan.');
-    }
-
-    Map<String, dynamic> body = {};
-    if (username != null) body['username'] = username;
-    if (email != null) body['email'] = email;
-    if (phoneNumber != null)
-      body['phone_number'] = phoneNumber; // Sesuaikan dengan nama field di API
-    if (birthDate != null)
-      body['birth_date'] = birthDate
-          .toIso8601String(); // Sesuaikan dengan nama field di API
-
-    final response = await http.patch(
-      Uri.parse('$_baseUrl/user'), // <--- INI PENTING! Update endpoint ke /user
-      headers: await _getHeaders(),
-      body: json.encode(body),
-    );
-
-    print(
-      'DEBUG_API_SERVICE: Update Profile Status Code: ${response.statusCode}',
-    );
-    print('DEBUG_API_SERVICE: Update Profile Response Body: ${response.body}');
-
-    if (response.statusCode == 200) {
-      return User.fromJson(json.decode(response.body));
-    } else {
-      throw Exception(
-        'Gagal memperbarui profil: ${response.statusCode} - ${response.body}',
-      );
-    }
-  }
-
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('authToken');

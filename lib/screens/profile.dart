@@ -2,8 +2,8 @@ import 'package:cleanquest/screens/riwayat_misi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'edit_profile.dart'; // Pastikan path ini benar
-import 'home_page.dart';   // Pastikan path ini benar
-import 'reward.dart';      // Pastikan path ini benar
+import 'home_page.dart'; // Pastikan path ini benar
+import 'reward.dart'; // Pastikan path ini benar
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../models/user_mission.dart'; // Pastikan model ini ada
@@ -11,7 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'section.dart'; // Pastikan path ini benar
 
 class ProfileScreen extends StatefulWidget {
-  final int userId; // userId ini mungkin tidak digunakan langsung untuk fetching di ApiService
+  final int
+  userId; // userId ini mungkin tidak digunakan langsung untuk fetching di ApiService
 
   const ProfileScreen({Key? key, required this.userId}) : super(key: key);
 
@@ -55,14 +56,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // PENTING: Mengambil data user yang sedang login menggunakan token
       // API service getUserData sekarang dirancang untuk mengambil user dari token,
       // sehingga parameter userId di sini bisa diabaikan atau diisi null.
-      final fetchedUser = await apiService.getUserData(widget.userId); // <--- Ini yang mengambil data user
+      final fetchedUser = await apiService.getUserData(
+        widget.userId,
+      ); // <--- Ini yang mengambil data user
 
       // Jika fetchedUser bisa null (misal jika token expired atau tidak ada user), tangani.
       if (fetchedUser == null) {
-        throw Exception("Data pengguna tidak dapat dimuat (token mungkin tidak valid atau user tidak ditemukan).");
+        throw Exception(
+          "Data pengguna tidak dapat dimuat (token mungkin tidak valid atau user tidak ditemukan).",
+        );
       }
 
-      print('DEBUG_PROFILE_SCREEN: User data fetched successfully. User ID: ${fetchedUser.id}');
+      print(
+        'DEBUG_PROFILE_SCREEN: User data fetched successfully. User ID: ${fetchedUser.id}',
+      );
 
       // Mengambil misi aktif untuk user ini
       final fetchedActiveUserMissions = await apiService.getMissions();
@@ -80,7 +87,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         hasError = false; // Pastikan ini false jika fetch sukses
       });
     } catch (e) {
-      print('ERROR_PROFILE_SCREEN: Error fetching data: $e'); // Log error yang lebih jelas
+      print(
+        'ERROR_PROFILE_SCREEN: Error fetching data: $e',
+      ); // Log error yang lebih jelas
       setState(() {
         isLoading = false;
         hasError = true; // Set hasError menjadi true jika ada error
@@ -89,9 +98,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         completedMissionsCount = 0;
         totalMissionsCount = 0;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat data profil: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal memuat data profil: $e')));
     }
   }
 
@@ -101,9 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(title),
-          content: SingleChildScrollView(
-            child: Text(content),
-          ),
+          content: SingleChildScrollView(child: Text(content)),
           actions: [
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0, right: 8.0),
@@ -116,8 +123,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                   minimumSize: const Size(0, 0),
                 ),
                 child: const Text(
@@ -145,7 +154,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     // 2. Tampilkan layar error jika ada kesalahan atau user null setelah loading
     if (hasError || user == null) {
-      print('DEBUG_PROFILE_SCREEN: Building: Error or user is null. Displaying error UI.');
+      print(
+        'DEBUG_PROFILE_SCREEN: Building: Error or user is null. Displaying error UI.',
+      );
       return Scaffold(
         backgroundColor: const Color.fromARGB(235, 255, 255, 255),
         body: Center(
@@ -154,7 +165,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               const Icon(Icons.error_outline, color: Colors.red, size: 50),
               const SizedBox(height: 10),
-              const Text('Gagal memuat profil.', style: TextStyle(color: Colors.red, fontSize: 18)),
+              const Text(
+                'Gagal memuat profil.',
+                style: TextStyle(color: Colors.red, fontSize: 18),
+              ),
               const SizedBox(height: 10),
               ElevatedButton(
                 onPressed: fetchData, // Tombol coba lagi
@@ -167,7 +181,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (!mounted) return;
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(builder: (context) => const SectionPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const SectionPage(),
+                    ),
                     (route) => false,
                   );
                 },
@@ -216,13 +232,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => EditProfileScreen(userId: widget.userId), // <--- Tidak perlu userId di sini
+                              builder: (context) => EditProfileScreen(
+                                userId: widget.userId,
+                              ), // <--- Tidak perlu userId di sini
                             ),
-                          ).then((_) => fetchData()); // Refresh data setelah kembali
+                          ).then(
+                            (_) => fetchData(),
+                          ); // Refresh data setelah kembali
                         },
                         child: const Text(
                           'Edit',
-                          style: TextStyle(color: Color.fromRGBO(85, 132, 122, 0.969), fontWeight: FontWeight.w900, fontSize: 15),
+                          style: TextStyle(
+                            color: Color.fromRGBO(85, 132, 122, 0.969),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     ),
@@ -247,7 +271,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _buildProgressIndicator(),
-                      const SizedBox(width: 16), // Memberi jarak antara progress dan poin
+                      const SizedBox(
+                        width: 16,
+                      ), // Memberi jarak antara progress dan poin
                       _buildPointsIndicator(), // Memanggil widget pembantu yang sekarang tangguh
                     ],
                   ),
@@ -261,21 +287,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Column(
                       children: [
-                        _buildListTile(icon: Icons.assignment, title: 'Riwayat Misi', onTap: () { 
-                          print('Navigasi ke Riwayat Misi'); 
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RiwayatMisiScreen(userId: widget.userId),
-                            ),
-                          );
-                          }
+                        _buildListTile(
+                          icon: Icons.assignment,
+                          title: 'Riwayat Misi',
+                          onTap: () {
+                            print('Navigasi ke Riwayat Misi');
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    RiwayatMisiScreen(userId: widget.userId),
+                              ),
+                            );
+                          },
                         ),
-                        _buildListTile(icon: Icons.help_outline, title: 'Pusat Bantuan', onTap: () {
-                            print('Navigasi ke Pusat Bantuan'); 
+                        _buildListTile(
+                          icon: Icons.help_outline,
+                          title: 'Pusat Bantuan',
+                          onTap: () {
+                            print('Navigasi ke Pusat Bantuan');
                             showCustomDialog(
-                            "Pusat Bantuan",
-                            '''Q: Bagaimana cara menyelesaikan misi?
+                              "Pusat Bantuan",
+                              '''Q: Bagaimana cara menyelesaikan misi?
 A: Ikuti instruksi yang tersedia di halaman utama aplikasi.
 
 Q: Mengapa poin saya tidak bertambah?
@@ -289,11 +322,14 @@ A: Tekan tombol “Edit” di kanan atas halaman profil, lalu ubah data yang dii
 
 Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
                             ''',
-                          );
-                          }
+                            );
+                          },
                         ),
-                        _buildListTile(icon: Icons.description_outlined, title: 'Syarat dan Ketentuan', onTap: () {
-                            print('Navigasi ke Syarat dan Ketentuan'); 
+                        _buildListTile(
+                          icon: Icons.description_outlined,
+                          title: 'Syarat dan Ketentuan',
+                          onTap: () {
+                            print('Navigasi ke Syarat dan Ketentuan');
                             showCustomDialog(
                               "Syarat dan Ketentuan",
                               '''1. Poin hanya dapat ditukarkan dengan hadiah dalam aplikasi.
@@ -303,7 +339,7 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
 5. Pengembang tidak bertanggung jawab atas kehilangan data atau kerugian akibat penyalahgunaan akun oleh pihak ketiga (misalnya, teman, keluarga, atau orang lain yang mengakses akun Anda tanpa izin).
                               ''',
                             );
-                          }
+                          },
                         ),
                       ],
                     ),
@@ -311,23 +347,45 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
                   const SizedBox(height: 60),
                   ElevatedButton(
                     onPressed: () async {
-                      setState(() { isLoading = true; });
+                      setState(() {
+                        isLoading = true;
+                      });
                       final success = await apiService.logout();
-                      setState(() { isLoading = false; });
+                      setState(() {
+                        isLoading = false;
+                      });
                       if (success) {
                         if (!mounted) return;
-                        Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const SectionPage()), (route) => false);
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SectionPage(),
+                          ),
+                          (route) => false,
+                        );
                       } else {
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logout gagal. Coba lagi.'),));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Logout gagal. Coba lagi.'),
+                          ),
+                        );
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 100,
+                        vertical: 16,
+                      ),
                       backgroundColor: const Color.fromRGBO(85, 132, 122, 0.97),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    child: const Text('Log Out', style: TextStyle(color: Colors.white),),
+                    child: const Text(
+                      'Log Out',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                   const SizedBox(height: 30),
                 ],
@@ -336,13 +394,18 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavBar(), // Navigasi bawah selalu terlihat
+      bottomNavigationBar:
+          _buildBottomNavBar(), // Navigasi bawah selalu terlihat
     );
   }
 
   // --- Widget Pembantu ---
 
-  Widget _buildListTile({required IconData icon, required String title, VoidCallback? onTap,}) {
+  Widget _buildListTile({
+    required IconData icon,
+    required String title,
+    VoidCallback? onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -351,7 +414,15 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
           children: [
             Icon(icon, color: Colors.grey[700], size: 26),
             const SizedBox(width: 16),
-            Expanded(child: Text(title, style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontSize: 14),)),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Color.fromARGB(255, 0, 0, 0),
+                  fontSize: 14,
+                ),
+              ),
+            ),
             const Icon(Icons.arrow_forward_ios, size: 13, color: Colors.grey),
           ],
         ),
@@ -380,7 +451,10 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const Text('Telah Dikerjakan', style: TextStyle(color: Colors.teal, fontSize: 12),),
+              const Text(
+                'Telah Dikerjakan',
+                style: TextStyle(color: Colors.teal, fontSize: 12),
+              ),
             ],
           ),
         ],
@@ -392,8 +466,11 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
   Widget _buildPointsIndicator() {
     // Tambahkan pengecekan null di sini secara eksplisit
     if (user == null) {
-      print('DEBUG_PROFILE_SCREEN: _buildPointsIndicator: user is null, showing 0 points.');
-      return Container( // Mengembalikan container default jika user null
+      print(
+        'DEBUG_PROFILE_SCREEN: _buildPointsIndicator: user is null, showing 0 points.',
+      );
+      return Container(
+        // Mengembalikan container default jika user null
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
           color: Colors.amber.withOpacity(0.1),
@@ -442,7 +519,9 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
   Widget _buildBottomNavBar() {
     // Tambahkan pengecekan null di sini secara eksplisit
     if (user == null) {
-      print('DEBUG_PROFILE_SCREEN: _buildBottomNavBar: user is null, using default ID 0.');
+      print(
+        'DEBUG_PROFILE_SCREEN: _buildBottomNavBar: user is null, using default ID 0.',
+      );
       return Padding(
         padding: const EdgeInsets.only(bottom: 0.0),
         child: ClipRRect(
@@ -461,19 +540,31 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
               if (index == 0) {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => HomeScreen(userId: userIdToUse)),
+                  MaterialPageRoute(
+                    builder: (context) => HomeScreen(userId: userIdToUse),
+                  ),
                 );
               } else if (index == 1) {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => RewardScreen(userId: userIdToUse)),
+                  MaterialPageRoute(
+                    builder: (context) => RewardScreen(userId: userIdToUse),
+                  ),
                 );
-              } else if (index == 2) { /* stay on profile */ }
+              } else if (index == 2) {
+                /* stay on profile */
+              }
             },
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(icon: Icon(Icons.card_giftcard), label: 'Reward',),
-              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.card_giftcard),
+                label: 'Reward',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: 'Profile',
+              ),
             ],
           ),
         ),
@@ -497,18 +588,27 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
             if (index == 0) {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => HomeScreen(userId: user!.id)), // user! aman di sini
+                MaterialPageRoute(
+                  builder: (context) => HomeScreen(userId: user!.id),
+                ), // user! aman di sini
               );
             } else if (index == 1) {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => RewardScreen(userId: user!.id)), // user! aman di sini
+                MaterialPageRoute(
+                  builder: (context) => RewardScreen(userId: user!.id),
+                ), // user! aman di sini
               );
-            } else if (index == 2) { /* stay on profile */ }
+            } else if (index == 2) {
+              /* stay on profile */
+            }
           },
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.card_giftcard), label: 'Reward',),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.card_giftcard),
+              label: 'Reward',
+            ),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
