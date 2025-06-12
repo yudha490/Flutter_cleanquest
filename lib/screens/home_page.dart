@@ -489,7 +489,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: AspectRatio(
                     aspectRatio: 2,
                     child: Image.network(
-                      mission.imageUrl ?? 'https://placehold.co/600x400/cccccc/333333?text=No+Image',
+                      mission.imageUrl ?? 'https://i.imgur.com/IOHiB78.jpeg',
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(

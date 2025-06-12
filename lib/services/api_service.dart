@@ -5,8 +5,8 @@ import '../models/user.dart';
 import '../models/user_mission.dart';
 import '../models/voucher.dart';
 import 'dart:async';
-import 'package:image_picker/image_picker.dart'; // <<< Tambahkan ini
-import 'dart:io'; // <<< Tambahkan ini untuk File (meskipun XFile sudah cukup, ini jaga-jaga)
+import 'package:image_picker/image_picker.dart'; // <<< PENTING: Pastikan ini ada
+import 'dart:io'; // <<< PENTING: Pastikan ini ada
 
 class ApiService {
   // Ganti dengan base URL API Laravel Anda yang sudah di-deploy
@@ -31,6 +31,8 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
+        // Pastikan User.fromJson menerima langsung object user, bukan di dalam key 'user'
+        // Jika server mengembalikan {"user": {...}}, ubah menjadi User.fromJson(json['user'])
         return User.fromJson(json);
       } else {
         print(
@@ -486,4 +488,43 @@ class ApiService {
       return false;
     }
   }
+
+  // <<< TAMBAHKAN METODE BARU INI UNTUK UPLOAD FOTO PROFIL >>>
+  Future<bool> uploadProfilePicture({
+    required XFile profileImage,
+  }) async {
+    final url = Uri.parse('$_baseUrl/user/profile-picture'); // Pastikan ini URL yang sesuai
+    final headers = await _getHeaders(includeAuth: true); // Ambil token autentikasi
+
+    try {
+      var request = http.MultipartRequest('POST', url);
+
+      request.headers.addAll({
+        'Accept': 'application/json',
+        if (headers.containsKey('Authorization')) 'Authorization': headers['Authorization']!,
+      });
+
+      request.files.add(await http.MultipartFile.fromPath(
+        'profile_picture', // <<< INI HARUS SAMA DENGAN NAMA FIELD DI BACKEND LARAVEL
+        profileImage.path,
+        filename: profileImage.name,
+      ));
+
+      var response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        print('Upload foto profil berhasil! Respon: $responseBody');
+        return true;
+      } else {
+        print('Gagal upload foto profil. Status: ${response.statusCode}, Respon: $responseBody');
+        final errorData = json.decode(responseBody);
+        throw Exception(errorData['message'] ?? 'Gagal mengunggah foto profil.');
+      }
+    } catch (e) {
+      print('Error dalam uploadProfilePicture: $e');
+      rethrow;
+    }
+  }
+  // <<< AKHIR METODE BARU >>>
 }

@@ -1,7 +1,9 @@
+import 'dart:io'; // Import ini untuk menggunakan File class
 import 'package:flutter/material.dart';
 import 'package:cleanquest/services/api_service.dart'; // Import ApiService
 import 'package:cleanquest/models/user.dart'; // Import User model
 import 'package:intl/intl.dart'; // For date formatting
+import 'package:image_picker/image_picker.dart'; // <<< PENTING: Pastikan ini sudah diimpor
 
 class EditProfileScreen extends StatefulWidget {
   final int userId; // Menerima userId dari ProfileScreen
@@ -26,11 +28,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isLoading = true;
   DateTime? _selectedDate;
 
+  XFile? _pickedProfileImage; // <<< Variabel untuk menyimpan gambar profil yang dipilih
+  final ImagePicker _picker = ImagePicker(); // <<< Instance ImagePicker
+
   @override
   void initState() {
     super.initState();
     _apiService = ApiService();
-    _fetchUserProfile();
+    _fetchUserProfile(); // Panggil ini untuk memuat data user saat inisialisasi
   }
 
   @override
@@ -45,6 +50,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _fetchUserProfile() async {
+    if (!mounted) return; // Penting untuk memeriksa apakah widget masih aktif
+
     setState(() {
       _isLoading = true;
     });
@@ -59,7 +66,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _birthDateController.text = DateFormat(
             'yyyy-MM-dd',
           ).format(user.birthDate);
-          _selectedDate = user.birthDate; // Set initial selected date
+          _selectedDate = user.birthDate;
           _isLoading = false;
         });
       }
@@ -68,7 +75,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _currentUser = null;
+          _currentUser = null; // Set null jika gagal
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -94,33 +101,73 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  Future<void> _saveProfile() async {
-    if (!mounted) return; // Add mounted check before async operations
+  // <<< FUNGSI UNTUK MEMILIH GAMBAR PROFIL (DARI KAMERA ATAU GALERI) >>>
+  Future<void> _pickProfileImage() async {
+    await showModalBottomSheet(
+      context: context,
+      builder: (BuildContext bc) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Pilih dari Galeri'),
+                onTap: () async {
+                  Navigator.pop(bc); // Tutup bottom sheet
+                  final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+                  if (image != null) {
+                    setState(() {
+                      _pickedProfileImage = image;
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Ambil dengan Kamera'),
+                onTap: () async {
+                  Navigator.pop(bc); // Tutup bottom sheet
+                  final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+                  if (image != null) {
+                    setState(() {
+                      _pickedProfileImage = image;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-    // Basic frontend validation
+  Future<void> _saveProfile() async {
+    if (!mounted) return;
+
+    // Validasi dasar form teks
     if (_usernameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _phoneController.text.isEmpty ||
         _birthDateController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Semua field wajib diisi!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Semua field wajib diisi!')));
       return;
     }
 
     if (_passwordController.text.isNotEmpty &&
         _passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Konfirmasi password tidak cocok!')),
-      );
+          const SnackBar(content: Text('Konfirmasi password tidak cocok!')));
       return;
     }
 
     setState(() {
-      _isLoading = true;
+      _isLoading = true; // Tampilkan loading
     });
 
     try {
+      // --- 1. Update Data Profil Teks ---
       final Map<String, dynamic> dataToUpdate = {
         'username': _usernameController.text,
         'email': _emailController.text,
@@ -135,20 +182,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       final response = await _apiService.updateUserProfile(dataToUpdate);
 
-      if (!mounted) return; // Add mounted check after async operations
+      if (!mounted) return; // Cek mounted setelah operasi async
 
-      if (response['success']) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(response['message'])));
-        Navigator.pop(
-          context,
-          true,
-        ); // Pop with true to indicate success for refresh
+      // --- 2. Upload Foto Profil (Jika ada perubahan) ---
+      bool profilePicUploadSuccess = true; // Asumsikan sukses jika tidak ada gambar baru
+      if (_pickedProfileImage != null) {
+        try {
+          profilePicUploadSuccess = await _apiService.uploadProfilePicture(
+            profileImage: _pickedProfileImage!, // Kirim file gambar yang dipilih
+          );
+        } catch (e) {
+          profilePicUploadSuccess = false; // Setel gagal jika ada error upload gambar
+          print('Error uploading profile picture: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Gagal mengunggah foto profil: ${e.toString()}')),
+            );
+          }
+        }
+      }
+
+      // --- 3. Tangani Respons Akhir (Gabungan Teks dan Foto) ---
+      if (response['success'] && profilePicUploadSuccess) {
+        // Jika kedua operasi (update teks dan upload foto) berhasil
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profil berhasil diperbarui!')));
+        // Penting: Panggil _fetchUserProfile() untuk memuat ulang data user dan memperbarui UI
+        await _fetchUserProfile();
+        Navigator.pop(context, true); // Kembali ke layar sebelumnya dengan indikasi sukses
       } else {
+        // Jika update teks gagal, tampilkan pesan dari backend
         String errorMessage = 'Gagal memperbarui profil.';
-        if (response.containsKey('data') &&
-            response['data'] is Map<String, dynamic>) {
+        if (response.containsKey('data') && response['data'] is Map<String, dynamic>) {
           final backendResponse = response['data'] as Map<String, dynamic>;
           if (backendResponse.containsKey('message')) {
             errorMessage = backendResponse['message'].toString();
@@ -156,16 +221,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           if (backendResponse.containsKey('errors')) {
             final errors = backendResponse['errors'] as Map<String, dynamic>;
             errors.forEach((field, messages) {
-              errorMessage +=
-                  '\n${field.toUpperCase()}: ${(messages as List).join(', ')}';
+              errorMessage += '\n${field.toUpperCase()}: ${(messages as List).join(', ')}';
             });
           }
         }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } catch (e) {
+      // Tangani error umum (misalnya masalah koneksi)
       print('Error saving profile: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -173,9 +236,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         );
       }
     } finally {
+      // Pastikan loading dimatikan dan gambar yang dipilih direset
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _pickedProfileImage = null; // Reset gambar yang dipilih setelah selesai
         });
       }
     }
@@ -202,7 +267,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: _saveProfile, // Panggil _saveProfile
+            onPressed: _saveProfile,
             child: const Text('Save', style: TextStyle(color: Colors.black)),
           ),
         ],
@@ -228,18 +293,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  const CircleAvatar(
+                  // Gambar Profil (menggunakan _pickedProfileImage atau _currentUser.profilePicture)
+                  CircleAvatar(
                     radius: 50,
-                    backgroundColor: Color(0xFFE0DDFB),
-                    child: Icon(Icons.person, size: 50, color: Colors.white),
+                    backgroundColor: const Color(0xFFE0DDFB),
+                    // Tentukan sumber gambar:
+                    // 1. Jika ada gambar baru yang dipilih (_pickedProfileImage)
+                    // 2. Jika user punya profile_picture dari server
+                    // 3. Fallback ke placeholder default
+                    backgroundImage: _pickedProfileImage != null
+                        ? FileImage(File(_pickedProfileImage!.path)) as ImageProvider // Gambar dari file lokal
+                        : (_currentUser?.profilePicture != null && _currentUser!.profilePicture!.isNotEmpty
+                            ? NetworkImage(_currentUser!.profilePicture!) as ImageProvider // Gambar dari network
+                            : null), // Jika tidak ada, fallback ke null
+                    child: _pickedProfileImage == null && (_currentUser?.profilePicture == null || _currentUser!.profilePicture!.isEmpty)
+                        ? const Icon(Icons.person, size: 50, color: Colors.white) // Placeholder default jika tidak ada gambar
+                        : null, // Jika ada gambar, tidak perlu placeholder
                   ),
                   Positioned(
                     bottom: 0,
                     right: 0,
                     child: GestureDetector(
-                      onTap: () {
-                        print("ara bau eek");
-                      },
+                      onTap: _pickProfileImage, // <<< Panggil fungsi pemilihan gambar
                       child: CircleAvatar(
                         radius: 15,
                         backgroundColor: const Color.fromRGBO(
@@ -262,8 +337,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
 
           // Form
+          // Gunakan SingleChildScrollView di dalam Container agar form bisa discroll jika keyboard muncul
           Container(
-            margin: const EdgeInsets.only(top: 350),
+            margin: const EdgeInsets.only(top: 250), // Atur margin agar tidak menumpuk dengan avatar
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
             decoration: const BoxDecoration(
               color: Color.fromRGBO(85, 132, 122, 0.97),
@@ -272,7 +348,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 topRight: Radius.circular(30),
               ),
             ),
-            child: ListView(
+            child: ListView( // Gunakan ListView agar konten bisa discroll
               children: [
                 _buildTextField(label: 'Nama', controller: _usernameController),
                 const SizedBox(height: 10),
@@ -287,7 +363,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   context,
                   label: 'Tanggal Lahir',
                   controller: _birthDateController,
-                ), // REVISI: Gunakan _buildDateField
+                ),
                 const SizedBox(height: 20),
                 _buildTextField(
                   label: 'Password Baru (opsional)',
@@ -313,7 +389,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     TextEditingController? controller,
     String? hintText,
     bool enabled = true,
-    bool isPassword = false, // Tambahkan parameter isPassword
+    bool isPassword = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,7 +399,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         TextField(
           controller: controller,
           enabled: enabled,
-          obscureText: isPassword, // Gunakan isPassword
+          obscureText: isPassword,
           style: const TextStyle(color: Colors.black),
           decoration: InputDecoration(
             hintText: hintText,
@@ -343,7 +419,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  // Widget untuk input tanggal lahir
   Widget _buildDateField(
     BuildContext context, {
     required String label,
@@ -356,9 +431,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         const SizedBox(height: 5),
         TextField(
           controller: controller,
-          readOnly: true, // Membuat field tidak bisa diketik manual
-          onTap: () =>
-              _selectDate(context), // Memanggil date picker saat ditekan
+          readOnly: true,
+          onTap: () => _selectDate(context),
           style: const TextStyle(color: Colors.black),
           decoration: InputDecoration(
             filled: true,
@@ -371,7 +445,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide.none,
             ),
-            suffixIcon: const Icon(Icons.calendar_today), // Icon kalender
+            suffixIcon: const Icon(Icons.calendar_today),
           ),
         ),
       ],

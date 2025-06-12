@@ -11,8 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'section.dart'; // Pastikan path ini benar
 
 class ProfileScreen extends StatefulWidget {
-  final int
-  userId; // userId ini mungkin tidak digunakan langsung untuk fetching di ApiService
+  final int userId;
 
   const ProfileScreen({Key? key, required this.userId}) : super(key: key);
 
@@ -21,20 +20,20 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  User? user; // Mengubah menjadi nullable
+  User? user;
   late ApiService apiService;
-  List<UserMission> activeUserMissions = []; // Menyimpan UserMission yang aktif
+  List<UserMission> activeUserMissions = [];
   int completedMissionsCount = 0;
   int totalMissionsCount = 0;
   bool isLoading = true;
-  bool hasError = false; // Menandakan apakah terjadi error saat fetching data
+  bool hasError = false;
 
   @override
   void initState() {
     super.initState();
     apiService = ApiService();
-    fetchData(); // Panggil fungsi untuk mengambil data profil
-    _getTokenAndPrint(); // Untuk debugging token
+    fetchData();
+    _getTokenAndPrint();
   }
 
   Future<void> _getTokenAndPrint() async {
@@ -50,57 +49,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> fetchData() async {
     setState(() {
       isLoading = true;
-      hasError = false; // Reset status error sebelum fetch data baru
+      hasError = false;
     });
     try {
-      // PENTING: Mengambil data user yang sedang login menggunakan token
-      // API service getUserData sekarang dirancang untuk mengambil user dari token,
-      // sehingga parameter userId di sini bisa diabaikan atau diisi null.
-      final fetchedUser = await apiService.getUserData(
-        widget.userId,
-      ); // <--- Ini yang mengambil data user
+      final fetchedUser = await apiService.getUserData(widget.userId);
 
-      // Jika fetchedUser bisa null (misal jika token expired atau tidak ada user), tangani.
       if (fetchedUser == null) {
         throw Exception(
-          "Data pengguna tidak dapat dimuat (token mungkin tidak valid atau user tidak ditemukan).",
-        );
+            "Data pengguna tidak dapat dimuat (token mungkin tidak valid atau user tidak ditemukan).");
       }
 
-      print(
-        'DEBUG_PROFILE_SCREEN: User data fetched successfully. User ID: ${fetchedUser.id}',
-      );
+      print('DEBUG_PROFILE_SCREEN: User data fetched successfully. User ID: ${fetchedUser.id}');
+      print('DEBUG_PROFILE_SCREEN: User profile picture: ${fetchedUser.profilePicture}'); // Debugging URL foto profil
 
-      // Mengambil misi aktif untuk user ini
       final fetchedActiveUserMissions = await apiService.getMissions();
-      // Hitung jumlah total misi dan misi yang sudah diselesaikan
       final completed = fetchedActiveUserMissions
           .where((um) => um.status == 'selesai')
           .length;
 
       setState(() {
-        user = fetchedUser; // Isi objek user dengan data yang berhasil diambil
+        user = fetchedUser;
         activeUserMissions = fetchedActiveUserMissions;
         totalMissionsCount = activeUserMissions.length;
         completedMissionsCount = completed;
         isLoading = false;
-        hasError = false; // Pastikan ini false jika fetch sukses
+        hasError = false;
       });
     } catch (e) {
-      print(
-        'ERROR_PROFILE_SCREEN: Error fetching data: $e',
-      ); // Log error yang lebih jelas
+      print('ERROR_PROFILE_SCREEN: Error fetching data: $e'); // Log error yang lebih jelas
       setState(() {
         isLoading = false;
-        hasError = true; // Set hasError menjadi true jika ada error
+        hasError = true;
         user = null; // Pastikan objek user null jika terjadi error
-        // Juga set count ke 0 jika error
         completedMissionsCount = 0;
         totalMissionsCount = 0;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Gagal memuat data profil: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal memuat data profil: $e')));
     }
   }
 
@@ -154,9 +139,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     // 2. Tampilkan layar error jika ada kesalahan atau user null setelah loading
     if (hasError || user == null) {
-      print(
-        'DEBUG_PROFILE_SCREEN: Building: Error or user is null. Displaying error UI.',
-      );
+      print('DEBUG_PROFILE_SCREEN: Building: Error or user is null. Displaying error UI.');
       return Scaffold(
         backgroundColor: const Color.fromARGB(235, 255, 255, 255),
         body: Center(
@@ -192,7 +175,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: _buildBottomNavBar(), // Navigasi bawah tetap ada
+        bottomNavigationBar: _buildBottomNavBar(),
       );
     }
 
@@ -200,6 +183,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     print('DEBUG_PROFILE_SCREEN: Building: User data available for rendering.');
     print('DEBUG_PROFILE_SCREEN: User ID for display: ${user!.id}');
     print('DEBUG_PROFILE_SCREEN: User Username for display: ${user!.username}');
+    print('DEBUG_PROFILE_SCREEN: Displaying profile picture: ${user!.profilePicture ?? 'N/A'}');
+
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -232,13 +217,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => EditProfileScreen(
-                                userId: widget.userId,
-                              ), // <--- Tidak perlu userId di sini
+                              // Penting: Teruskan user!.id yang sudah dipastikan tidak null
+                              builder: (context) => EditProfileScreen(userId: user!.id),
                             ),
                           ).then(
-                            (_) => fetchData(),
-                          ); // Refresh data setelah kembali
+                            (_) => fetchData(), // Refresh data setelah kembali dari EditProfileScreen
+                          );
                         },
                         child: const Text(
                           'Edit',
@@ -253,11 +237,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
 
                   const SizedBox(height: 20),
-                  const CircleAvatar(
+                  // <<< BAGIAN UNTUK MENAMPILKAN FOTO PROFIL >>>
+                  CircleAvatar(
                     radius: 50,
-                    backgroundColor: Color(0xFFE0DDFB),
-                    child: Icon(Icons.person, size: 50, color: Colors.white),
+                    backgroundColor: const Color(0xFFE0DDFB), // Warna latar belakang default
+                    // Tentukan sumber gambar:
+                    // 1. Jika user memiliki profilePicture dari server
+                    // 2. Fallback ke null, yang akan membuat 'child' ditampilkan
+                    backgroundImage: user!.profilePicture != null && user!.profilePicture!.isNotEmpty
+                        ? NetworkImage(user!.profilePicture!) as ImageProvider // Gambar dari network
+                        : null, // Jika tidak ada, fallback ke null
+                    child: user!.profilePicture == null || user!.profilePicture!.isEmpty
+                        ? const Icon(Icons.person, size: 50, color: Colors.white) // Placeholder default
+                        : null, // Jika ada gambar, tidak perlu placeholder
                   ),
+                  // <<< AKHIR BAGIAN FOTO PROFIL >>>
+
                   const SizedBox(height: 10),
                   Text(
                     user!.username, // user dipastikan tidak null di sini
@@ -271,10 +266,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _buildProgressIndicator(),
-                      const SizedBox(
-                        width: 16,
-                      ), // Memberi jarak antara progress dan poin
-                      _buildPointsIndicator(), // Memanggil widget pembantu yang sekarang tangguh
+                      const SizedBox(width: 16),
+                      _buildPointsIndicator(),
                     ],
                   ),
                   const SizedBox(height: 60),
@@ -295,8 +288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    RiwayatMisiScreen(userId: widget.userId),
+                                builder: (context) => RiwayatMisiScreen(userId: user!.id), // user! aman di sini
                               ),
                             );
                           },
@@ -321,7 +313,7 @@ Q: Bagaimana cara edit profil?
 A: Tekan tombol “Edit” di kanan atas halaman profil, lalu ubah data yang diinginkan. Setelah selesai, tekan save di kanan atas.
 
 Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
-                            ''',
+                              ''',
                             );
                           },
                         ),
@@ -394,8 +386,7 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
           ),
         ],
       ),
-      bottomNavigationBar:
-          _buildBottomNavBar(), // Navigasi bawah selalu terlihat
+      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
@@ -462,15 +453,10 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
     );
   }
 
-  // KEMBALI KE _buildPointsIndicator()
   Widget _buildPointsIndicator() {
-    // Tambahkan pengecekan null di sini secara eksplisit
     if (user == null) {
-      print(
-        'DEBUG_PROFILE_SCREEN: _buildPointsIndicator: user is null, showing 0 points.',
-      );
+      print('DEBUG_PROFILE_SCREEN: _buildPointsIndicator: user is null, showing 0 points.');
       return Container(
-        // Mengembalikan container default jika user null
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
           color: Colors.amber.withOpacity(0.1),
@@ -481,7 +467,7 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
             Icon(Icons.star, color: Colors.amber),
             SizedBox(width: 8),
             Text(
-              '0 Poin', // Default 0 poin jika user null
+              '0 Poin',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
@@ -492,7 +478,6 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
       );
     }
 
-    // Jika user tidak null, tampilkan poinnya
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -504,7 +489,7 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
           const Icon(Icons.star, color: Colors.amber),
           const SizedBox(width: 8),
           Text(
-            '${user!.points} Poin', // user! aman di sini karena sudah dicek di atas
+            '${user!.points} Poin',
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -515,13 +500,9 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
     );
   }
 
-  // KEMBALI KE _buildBottomNavBar()
   Widget _buildBottomNavBar() {
-    // Tambahkan pengecekan null di sini secara eksplisit
     if (user == null) {
-      print(
-        'DEBUG_PROFILE_SCREEN: _buildBottomNavBar: user is null, using default ID 0.',
-      );
+      print('DEBUG_PROFILE_SCREEN: _buildBottomNavBar: user is null, using default ID 0.');
       return Padding(
         padding: const EdgeInsets.only(bottom: 0.0),
         child: ClipRRect(
@@ -535,8 +516,7 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
             selectedItemColor: Theme.of(context).primaryColor,
             unselectedItemColor: Colors.grey[600],
             onTap: (index) {
-              // Jika user null, default ke ID 0 untuk navigasi
-              int userIdToUse = 0; // Default ID jika user null
+              int userIdToUse = 0;
               if (index == 0) {
                 Navigator.pushReplacement(
                   context,
@@ -571,7 +551,6 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
       );
     }
 
-    // Jika user tidak null, tampilkan navbar seperti biasa
     return Padding(
       padding: const EdgeInsets.only(bottom: 0.0),
       child: ClipRRect(
@@ -581,7 +560,7 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
         ),
         child: BottomNavigationBar(
           backgroundColor: Colors.white,
-          currentIndex: 2, // Ini adalah index untuk ProfileScreen
+          currentIndex: 2,
           selectedItemColor: Theme.of(context).primaryColor,
           unselectedItemColor: Colors.grey[600],
           onTap: (index) {
@@ -590,14 +569,14 @@ Untuk bantuan lebih lanjut, hubungi support@cleanquest.id
                 context,
                 MaterialPageRoute(
                   builder: (context) => HomeScreen(userId: user!.id),
-                ), // user! aman di sini
+                ),
               );
             } else if (index == 1) {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
                   builder: (context) => RewardScreen(userId: user!.id),
-                ), // user! aman di sini
+                ),
               );
             } else if (index == 2) {
               /* stay on profile */
