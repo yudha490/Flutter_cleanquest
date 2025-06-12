@@ -5,10 +5,13 @@ import '../models/user.dart';
 import '../models/user_mission.dart';
 import '../models/voucher.dart';
 import 'dart:async';
+import 'package:image_picker/image_picker.dart'; // <<< Tambahkan ini
+import 'dart:io'; // <<< Tambahkan ini untuk File (meskipun XFile sudah cukup, ini jaga-jaga)
 
 class ApiService {
-  static const String _baseUrl =
-      'https://test-production-6d06.up.railway.app/api';
+  // Ganti dengan base URL API Laravel Anda yang sudah di-deploy
+  // Pastikan ini adalah URL dasar, tanpa /api
+  static const String _baseUrl = 'https://test-production-6d06.up.railway.app/api';
 
   Future<void> _saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
@@ -62,7 +65,7 @@ class ApiService {
       // CHANGE THIS DEFAULT VALUE TO JUST THE BASE DOMAIN
       // For your Railway app, it should be: 'https://test-production-6d06.up.railway.app'
       defaultValue:
-          'https://test-production-6d06.up.railway.app', // <--- REMOVE THE /api/ping FROM HERE!
+          'https://test-production-6d06.up.railway.app', // <--- Cek lagi apakah ini URL base saja tanpa '/api'
     );
 
     // The endpoint path
@@ -252,7 +255,7 @@ class ApiService {
   // Data Pengguna (User)
   // ---------------------------------------------------------------------------
 
-  Future<User?> getUserData(int? userId) async { // Parameter userId sekarang opsional (int?)
+  Future<User?> getUserData(int? userId) async {
     final token = await _getToken(); // Mengambil token
 
     if (token == null) {
@@ -267,7 +270,11 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
-        return User.fromJson(data); // Berhasil, kembalikan objek User
+        // Penting: Pastikan struktur JSON respons sesuai.
+        // Jika responsnya { "user": { "id": 1, ... } }, maka perlu User.fromJson(data['user'])
+        // Jika responsnya langsung { "id": 1, ... }, maka User.fromJson(data) sudah benar.
+        // Berdasarkan controller yang diberikan sebelumnya (Auth::user()), kemungkinan respons langsung objek User.
+        return User.fromJson(data);
       } else if (response.statusCode == 401) {
         print('GET_USER_DATA_ERROR: Token tidak valid atau kedaluwarsa. Status: 401 - ${response.body}');
         // Opsional: Lakukan logout otomatis di sini jika 401
@@ -286,7 +293,7 @@ class ApiService {
   }
 
   Future<List<UserMission>> getMissions() async {
-    final url = Uri.parse('$_baseUrl/missions/active');
+    final url = Uri.parse('$_baseUrl/missions/active'); // Asumsi endpoint ini
     try {
       final response = await http.get(url, headers: await _getHeaders());
 
@@ -310,27 +317,77 @@ class ApiService {
     }
   }
 
+  // --- Metode LAMA untuk submit proof by URL (Opsional, bisa dihapus jika tidak dipakai) ---
   Future<bool> submitMissionProof({
     required int userMissionId,
     required String proofUrl,
   }) async {
-    final url = Uri.parse('$_baseUrl/missions/$userMissionId/submit-proof');
+    final url = Uri.parse('$_baseUrl/missions/$userMissionId/submit-proof'); // Pastikan endpoint ini benar
     final response = await http.post(
       url,
       headers: await _getHeaders(),
-      body: jsonEncode({'proof_url': proofUrl}),
+      body: jsonEncode({'proof_url': proofUrl}), // Mengirim URL
     );
 
     if (response.statusCode == 200) {
       return true;
     } else {
       print(
-        'Failed to submit proof: ${response.statusCode} - ${response.body}',
+        'Failed to submit proof by URL: ${response.statusCode} - ${response.body}',
       );
       return false;
     }
   }
-    Future<List<UserMission>> getUserMissionsByStatus(int userId, List<String> statuses) async {
+  // --- END Metode LAMA ---
+
+  // --- Metode BARU untuk upload bukti misi via file (sesuai kebutuhan Anda) ---
+  Future<bool> uploadMissionProof({
+    required int userMissionId,
+    required XFile proofFile,
+  }) async {
+    // Perhatikan URL endpoint, sesuaikan dengan rute Laravel Anda
+    final url = Uri.parse('$_baseUrl/user-missions/$userMissionId/submit-proof');
+    final headers = await _getHeaders(includeAuth: true); // Dapatkan header dengan token
+
+    try {
+      var request = http.MultipartRequest('POST', url);
+
+      // Tambahkan headers ke request.headers.
+      // Penting: Jangan sertakan 'Content-Type': 'application/json' di sini,
+      // karena MultipartRequest akan secara otomatis mengatur Content-Type yang benar.
+      request.headers.addAll({
+        'Accept': 'application/json',
+        if (headers.containsKey('Authorization')) 'Authorization': headers['Authorization']!,
+      });
+
+      // Tambahkan file bukti. 'proof_file' harus cocok dengan nama field di backend Laravel.
+      request.files.add(await http.MultipartFile.fromPath(
+        'proof_file', // <<< PASTIKAN INI SAMA PERSIS dengan field di Laravel Controller Anda!
+        proofFile.path,
+        filename: proofFile.name,
+      ));
+
+      var response = await request.send();
+      final responseBody = await response.stream.bytesToString(); // Baca response body
+
+      if (response.statusCode == 200) {
+        print('Upload bukti berhasil! Respon: $responseBody');
+        return true;
+      } else {
+        print('Gagal upload bukti. Status: ${response.statusCode}, Respon: $responseBody');
+        // Decode body untuk pesan error lebih detail dari Laravel
+        final errorData = json.decode(responseBody);
+        throw Exception(errorData['message'] ?? 'Failed to upload proof.');
+      }
+    } catch (e) {
+      print('Error dalam uploadMissionProof: $e');
+      rethrow; // Lempar kembali exception agar bisa ditangkap di UI
+    }
+  }
+  // --- END Metode BARU ---
+
+
+  Future<List<UserMission>> getUserMissionsByStatus(int userId, List<String> statuses) async {
     // Bangun URL dengan parameter query untuk statuses
     final Map<String, dynamic> queryParams = {
       'statuses[]': statuses, // Kirim sebagai array parameter
